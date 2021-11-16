@@ -2,6 +2,7 @@ package com.android.smsdemo.activity
 
 import android.Manifest
 import android.app.Activity
+import android.app.role.RoleManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -62,7 +63,13 @@ class MainActivity : DaggerAppCompatActivity(), SmsClickListener {
     }
 
     fun isDefaultSmsApp(): Boolean {
-        return packageName.equals(Telephony.Sms.getDefaultSmsPackage(this))
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            roleManager.isRoleHeld(RoleManager.ROLE_SMS)
+        } else {
+            packageName.equals(Telephony.Sms.getDefaultSmsPackage(this))
+        }
+
     }
 
     private fun checkPermission(){
@@ -109,9 +116,17 @@ class MainActivity : DaggerAppCompatActivity(), SmsClickListener {
     }
 
     private fun setDefaultApp(){
-        val setSmsAppIntent = Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT)
-        setSmsAppIntent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName)
-        resultLauncher.launch(setSmsAppIntent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(RoleManager::class.java)
+            val roleRequestIntent = roleManager.createRequestRoleIntent(
+                RoleManager.ROLE_SMS)
+            resultLauncher.launch(roleRequestIntent)
+        } else {
+            val setSmsAppIntent = Intent(Telephony.Sms.Intents.ACTION_CHANGE_DEFAULT)
+            setSmsAppIntent.putExtra(Telephony.Sms.Intents.EXTRA_PACKAGE_NAME, packageName)
+            resultLauncher.launch(setSmsAppIntent)
+        }
+
     }
 
 
